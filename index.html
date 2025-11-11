@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SDN KARANGSEGAR 03</title>
+  <meta name="theme-color" content="#c79cff" />
+  <!-- Firebase SDKs (optional; only used if FIREBASE_CONFIG is provided) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-storage-compat.js"></script>
+  <style>
+    :root{
+      --bg1:#ece3ff;
+      --bg2:#f4e6ff;
+      --card1:#f5eaff;
+      --card2:#ffe6f5;
+      --text:#2a2140;
+      --muted:#6b6280;
+      --accent:#8b5cf6;
+      --accent-2:#ff6aa9;
+      --success:#dff8e8;
+      --radius:18px;
+      --shadow:0 10px 30px rgba(124,77,255,0.18), 0 6px 16px rgba(0,0,0,0.06);
+      --shadow-lite:0 3px 10px rgba(0,0,0,0.08);
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Noto Sans", "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      color:var(--text);
+      background: linear-gradient(120deg, #f2e9ff, #ffd8f1, #efe6ff);
+      background-size: 200% 200%;
+      animation: bgShift 22s ease-in-out infinite alternate;
+      overflow-x:hidden;
+    }
+    /* Turn off animations when user or device prefers reduced motion */
+    @media (prefers-reduced-motion: reduce){
+      body, .gate{ animation: none !important }
+    }
+    /* Mobile performance: pause animations and lighten shadows */
+    @media (max-width: 640px){
+      body, .gate{ animation: none !important }
+      .header, .card, .empty, .contact{ box-shadow: var(--shadow-lite) !important }
+    }
+    /* Manual toggle */
+    .animation-off body, body.animation-off, .animation-off .gate{ animation: none !important }
+
+    /* subtle floating dots animation like in screenshots */
+    .particles{
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      z-index:1;
+      overflow:hidden;
+      display:none;
+    }
+    /* large animated purple glow layer */
+    .gradient-flow{
+      position:fixed;
+      inset:-20%;
+      z-index:0;
+      pointer-events:none;
+      display:none;
+    }
+    .gradient-flow::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius:50%;
+      background:
+        conic-gradient(from 0deg at 50% 50%,
+          rgba(139,92,246,0.55),
+          rgba(255,192,244,0.38),
+          rgba(139,92,246,0.65),
+          rgba(255,192,244,0.38),
+          rgba(139,92,246,0.55));
+      transform: rotate(0deg) scale(1.1);
+      animation: spin 28s linear infinite;
+    }
+    .gradient-flow::after{
+      content:"";
+      position:absolute;
+      inset:10% 5% 5% 10%;
+      border-radius:50%;
+      background:
+        radial-gradient(40% 40% at 30% 30%, rgba(164,128,255,0.45), transparent 60%),
+        radial-gradient(35% 35% at 70% 60%, rgba(255,168,236,0.35), transparent 70%),
+        radial-gradient(45% 45% at 60% 25%, rgba(154,111,255,0.35), transparent 70%);
+      animation: spinReverse 36s linear infinite;
+    }
+    /* Faster animation only for main (in-website) background, keep login as-is */
+    .main-flow::before{ animation-duration: 16s }
+    .main-flow::after{ animation-duration: 22s }
+    @keyframes spin{ to{ transform: rotate(360deg) scale(1.1) } }
+    @keyframes spinReverse{ to{ transform: rotate(-360deg) } }
+    .dot{
+      position:absolute;
+      width:8px;height:8px;
+      background:rgba(124,77,255,0.25);
+      border-radius:50%;
+      filter:blur(0.2px);
+      animation: float var(--dur) linear infinite;
+      transform:translate(-50%,-50%);
+    }
+    @keyframes float{
+      0%{ transform: translate(var(--x), 110vh) scale(var(--s)); opacity:0 }
+      10%{ opacity:.7 }
+      100%{ transform: translate(calc(var(--x) + var(--dx)), -10vh) scale(var(--s)); opacity:0 }
+    }
+
+    .container{
+      position:relative;
+      z-index:1;
+      max-width:1080px;
+      margin:40px auto 80px;
+      padding:0 20px;
+    }
+
+    .header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      background: linear-gradient(135deg, #e9e1ff, #f6dbff);
+      border-radius: calc(var(--radius) + 6px);
+      padding:18px 22px;
+      box-shadow: var(--shadow);
+    }
+    /* Special centered site header */
+    .site-header{
+      justify-content:center;
+    }
+    .site-header .brand{
+      width:100%;
+      display:grid;
+      grid-template-columns: 48px 1fr 48px;
+      align-items:center;
+      justify-items:center;
+      gap:12px;
+    }
+    .title-main{
+      margin:0;
+      text-align:center;
+      font-size:28px;
+      font-weight:900;
+      letter-spacing:.4px;
+    }
+    .brand{
+      display:flex; align-items:center; gap:12px;
+    }
+    .badge{
+      width:44px;height:44px;border-radius:999px;
+      display:grid;place-items:center;
+      background: radial-gradient(circle at 30% 30%, #ffd179, #ff9f4d);
+      box-shadow: inset 0 2px 8px rgba(255,255,255,0.6), 0 6px 16px rgba(255,159,77,0.45);
+      color:#fff; font-weight:700; font-size:20px;
+    }
+    h1{
+      margin:0; font-size:22px; letter-spacing:.2px;
+    }
+    .by{
+      font-size:12px; color:var(--muted);
+    }
+
+    .card{
+      background: linear-gradient(135deg, var(--card1), var(--card2));
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding:22px;
+      margin-top:22px;
+    }
+    .card-upload{
+      background: linear-gradient(135deg, #ede4ff, #ffe4f9);
+    }
+    .card-info{
+      background: linear-gradient(135deg, #f0e7ff, #ffeaf6);
+    }
+    /* Category headings uppercase for a bold look */
+    .category .card-title{
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+    .card-title{
+      display:flex; align-items:center; gap:10px;
+      font-weight:700; letter-spacing:.2px;
+    }
+    .card-title .icon{
+      color:var(--accent);
+      font-size:20px;
+    }
+    .uploader{
+      margin-top:16px;
+      border:2px dashed rgba(0,0,0,0.12);
+      border-radius: 16px;
+      min-height:180px;
+      display:grid; place-items:center;
+      background: rgba(255,255,255,0.4);
+      transition: .2s ease;
+    }
+    .uploader.dragover{
+      border-color: var(--accent);
+      background: rgba(124,77,255,0.06);
+    }
+    .uploader .inner{
+      text-align:center; padding:26px 14px; color:var(--muted);
+    }
+    .camera{
+      width:56px;height:56px;border-radius:16px;
+      display:grid;place-items:center;margin:0 auto 8px;
+      color:var(--accent);
+      background: linear-gradient(135deg, #ffffff, #ffe9ff);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.8), 0 6px 16px rgba(124,77,255,.18);
+      font-size:26px;
+    }
+    .upload-note{ font-size:12px; margin-top:6px; color:var(--muted) }
+    .upload-btn{
+      margin-top:10px;
+      display:inline-block;
+      background: linear-gradient(135deg, var(--accent), #9b6bff);
+      color:#fff; border:none; padding:10px 14px; border-radius:12px;
+      font-weight:600; cursor:pointer;
+      box-shadow: 0 8px 20px rgba(124,77,255,.35);
+    }
+    input[type=file]{ display:none }
+
+    /* Compact gallery list (filename items) */
+    .gallery{
+      margin-top:12px;
+      display:flex; flex-direction:column; gap:8px;
+    }
+    .item{
+      display:flex; align-items:center; gap:10px;
+      background:#fff; border-radius:10px; box-shadow: var(--shadow);
+      padding:10px 12px;
+    }
+    .ext{
+      width:42px; height:32px; border-radius:6px;
+      display:grid; place-items:center; font-weight:800; color:#fff;
+      background: linear-gradient(135deg, #8b5cf6, #b088ff);
+      flex:0 0 42px;
+    }
+    .name{ flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text) }
+    .meta{ font-size:12px; color:var(--muted) }
+    .actions{ display:flex; gap:6px; align-items:center }
+    .btn{
+      border:none; cursor:pointer; border-radius:8px; padding:6px 10px; font-weight:700;
+    }
+    .btn-download{ background:#eef2ff; color:#4f46e5 }
+    .remove{
+      background:#fff0f0; color:#b91c1c; border:1px solid #f5c2c2;
+      font-weight:800; font-size:14px; cursor:pointer; padding:6px 10px; border-radius:8px;
+    }
+    .remove:hover{ background:#ffe4e8 }
+    .title-row{ display:flex; align-items:center; justify-content:space-between; gap:10px }
+    .btn-ghost{
+      border:1px dashed rgba(0,0,0,.15); background:#ffffffa6; color:#6b21a8;
+      padding:6px 10px; border-radius:8px; cursor:pointer; font-weight:700;
+    }
+    .empty{
+      display:grid; place-items:center; text-align:center; color:var(--muted);
+      padding:34px 12px; border-radius:16px; min-height:160px;
+      background: linear-gradient(135deg, #ede4ff, #ffe4f9);
+      box-shadow: var(--shadow);
+    }
+    .empty .big{
+      font-size:40px; color:#a08aff; margin-bottom:8px;
+    }
+
+    .contacts{
+      display:grid; grid-template-columns: 1fr; gap:14px;
+      margin-top:22px;
+    }
+    @media (min-width:860px){
+      .contacts{ grid-template-columns: 1fr 1fr 1fr }
+    }
+    .contact{
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      padding:16px;
+      display:flex; align-items:center; gap:12px;
+      min-height:64px;
+    }
+    .contact.whatsapp{
+      background: var(--success);
+    }
+    .contact .label{
+      font-size:12px; color:var(--muted); margin-bottom:4px;
+    }
+    .contact .value{
+      font-weight:700;
+      word-break:break-word;
+    }
+    .footer{
+      text-align:center; color:var(--muted); margin:26px 0 6px;
+    }
+    /* Floating performance toggle button */
+    .perf-toggle{
+      position:fixed; right:14px; bottom:14px; z-index:3;
+      background:#ffffffd9; border:1px solid rgba(0,0,0,.08);
+      border-radius:14px; padding:8px 12px; font-weight:700; color:#5b21b6;
+      box-shadow: var(--shadow-lite); cursor:pointer;
+    }
+
+    /* Login overlay */
+    .gate{
+      position:fixed; inset:0; display:grid; place-items:center;
+      z-index:10;
+      /* make fully opaque so background never peeks through */
+      background: linear-gradient(120deg, #f8f2ff, #ffeafb, #f8f2ff);
+      background-size: 200% 200%;
+      animation: bgShift 26s ease-in-out infinite alternate;
+    }
+    /* Lightweight keyframes */
+    @keyframes bgShift{ 0%{background-position:0% 50%} 100%{background-position:100% 50%} }
+    @keyframes subtle{
+      from{ filter:hue-rotate(0deg) }
+      to{ filter:hue-rotate(-10deg) }
+    }
+    /* Move multiple gradient layers to create a smooth flowing background */
+    @keyframes moveBg{
+      0%{
+        background-position:
+          0% 0%,
+          100% 0%,
+          0% 100%,
+          50% 50%;
+      }
+      50%{
+        background-position:
+          100% 50%,
+          0% 100%,
+          100% 0%,
+          50% 50%;
+      }
+      100%{
+        background-position:
+          0% 0%,
+          100% 0%,
+          0% 100%,
+          50% 50%;
+      }
+    }
+    .login{
+      width:min(96vw, 460px);
+      background: linear-gradient(135deg, #e9e1ff, #f6dbff);
+      border-radius: 22px;
+      padding: 24px;
+      box-shadow: var(--shadow);
+    }
+    .login h2{ margin:6px 0 12px }
+    .field{
+      display:flex; flex-direction:column; gap:6px; margin:12px 0;
+    }
+    .input{
+      background:#fff; border:1px solid rgba(0,0,0,.06);
+      padding:12px 14px; border-radius:12px; font-size:16px; outline:none;
+    }
+    .submit{
+      width:100%; margin-top:10px;
+      background: linear-gradient(135deg, var(--accent), #9b6bff);
+      color:#fff; border:none; padding:12px 16px; border-radius:12px;
+      font-weight:700; cursor:pointer; box-shadow: 0 8px 20px rgba(124,77,255,.35);
+    }
+    .error{ color:#c0392b; font-size:13px; min-height:18px }
+    .hide{ display:none !important }
+    .locked{ overflow:hidden }
+  </style>
+</head>
+<body>
+  <!-- animated floating dots -->
+  <div class="gradient-flow main-flow" aria-hidden="true"></div>
+  <div class="particles" id="particles" aria-hidden="true"></div>
+
+  <!-- LOGIN GATE -->
+  <section class="gate" id="gate">
+    <div class="gradient-flow" aria-hidden="true"></div>
+    <div class="login" role="dialog" aria-labelledby="login-title">
+      <div class="header" style="margin:0 0 10px 0; box-shadow:none;">
+        <div class="brand">
+          <div class="badge">★</div>
+          <div>
+            <div style="font-weight:800">SDN KARANGSEGAR 03</div>
+            <div class="by">Masuk untuk mengakses website</div>
+          </div>
+        </div>
+      </div>
+      <h2 id="login-title">Login</h2>
+      <form id="login-form" novalidate>
+        <div class="field">
+          <label for="username">Username</label>
+          <input id="username" name="username" class="input" placeholder="Masukkan username" autocomplete="username" required />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" class="input" placeholder="Masukkan password" autocomplete="current-password" required />
+        </div>
+        <div class="error" id="login-error"></div>
+        <button type="submit" class="submit">Masuk</button>
+      </form>
+    </div>
+  </section>
+
+  <main class="container" id="app" aria-hidden="true">
+    <button class="perf-toggle" id="perf-toggle" title="Matikan/Nyalakan animasi">Matikan Animasi</button>
+    <header class="header site-header">
+      <div class="brand">
+        <div class="badge">★</div>
+        <h1 class="title-main">SDN KARANGSEGAR 03</h1>
+        <div class="badge">★</div>
+      </div>
+    </header>
+
+    <section class="card card-upload">
+      <div class="card-title"><span class="icon">⤴</span> Unggah Foto Dokumentasi</div>
+      <label class="uploader" id="dropzone">
+        <input id="file-input" type="file" accept="image/*,video/*" multiple />
+        <div class="inner">
+          <div class="camera">📷</div>
+          <div style="font-weight:700">Pilih kategori, lalu klik untuk memilih foto/video atau seret ke sini</div>
+          <div style="margin:10px 0">
+            <select id="category-select" class="input" style="width:260px; text-transform:uppercase">
+              <option value="" selected>PILIH KATEGORI</option>
+              <option value="senam">KEGIATAN SENAM SEHAT</option>
+              <option value="pramuka">KEGIATAN PRAMUKA</option>
+              <option value="upacara">KEGIATAN UPACARA</option>
+              <option value="maulid">MAULID NABI</option>
+              <option value="kelulusan">FOTO KELULUSAN</option>
+              <option value="bersama">FOTO BERSAMA</option>
+            </select>
+          </div>
+          <div class="upload-note">Format: JPG, PNG, GIF, MP4, WEBM (Maks. 50MB per file). Pastikan memilih kategori terlebih dahulu.</div>
+          <button type="button" class="upload-btn" id="choose-btn">Pilih File</button>
+        </div>
+      </label>
+    </section>
+
+    <!-- KATEGORI GALERI (collapsed by default) -->
+    <section class="card card-upload category" id="cat-senam">
+      <div class="card-title title-row"><span data-toggle="senam">KEGIATAN SENAM SEHAT</span><button class="btn-ghost" data-clear="senam">Hapus Semua</button></div>
+      <div class="gallery hide" data-gallery="senam"></div>
+    </section>
+
+    <section class="card card-upload category" id="cat-pramuka">
+      <div class="card-title title-row"><span data-toggle="pramuka">KEGIATAN PRAMUKA</span><button class="btn-ghost" data-clear="pramuka">Hapus Semua</button></div>
+      <div class="gallery hide" data-gallery="pramuka"></div>
+    </section>
+
+    <section class="card card-upload category" id="cat-upacara">
+      <div class="card-title title-row"><span data-toggle="upacara">KEGIATAN UPACARA</span><button class="btn-ghost" data-clear="upacara">Hapus Semua</button></div>
+      <div class="gallery hide" data-gallery="upacara"></div>
+    </section>
+
+    <section class="card card-upload category" id="cat-maulid">
+      <div class="card-title title-row"><span data-toggle="maulid">MAULID NABI</span><button class="btn-ghost" data-clear="maulid">Hapus Semua</button></div>
+      <div class="gallery hide" data-gallery="maulid"></div>
+    </section>
+
+    <section class="card card-upload category" id="cat-kelulusan">
+      <div class="card-title title-row"><span data-toggle="kelulusan">FOTO KELULUSAN</span><button class="btn-ghost" data-clear="kelulusan">Hapus Semua</button></div>
+      <div class="gallery hide" data-gallery="kelulusan"></div>
+    </section>
+
+    <section class="card card-upload category" id="cat-bersama">
+      <div class="card-title title-row"><span data-toggle="bersama">FOTO BERSAMA</span><button class="btn-ghost" data-clear="bersama">Hapus Semua</button></div>
+      <div class="gallery hide" data-gallery="bersama"></div>
+    </section>
+
+    <section class="card card-info">
+      <div class="card-title" style="margin-bottom:8px">Kontak & Informasi</div>
+      <div class="contacts">
+        <div class="contact">
+          <div style="font-size:22px">📸</div>
+          <div>
+            <div class="label">Instagram</div>
+            <div class="value">fhmi23456</div>
+          </div>
+        </div>
+        <div class="contact">
+          <div style="font-size:22px">🎵</div>
+          <div>
+            <div class="label">TikTok</div>
+            <div class="value">fahmim.y</div>
+          </div>
+        </div>
+        <div class="contact whatsapp">
+          <div style="font-size:22px">📞</div>
+          <div>
+            <div class="label">WhatsApp / Telepon</div>
+            <div class="value">083800101097</div>
+          </div>
+        </div>
+      </div>
+      <div class="footer">
+        WEBSITE DOKUMENTASI SEKOLAH SDN KARANGSEGAR 03<br/>
+        CREATOR FAHMI M.Y
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Set this to your Firebase config to enable cloud upload
+    // Example:
+    // window.FIREBASE_CONFIG = {
+    //   apiKey: "YOUR_API_KEY",
+    //   authDomain: "YOUR_PROJECT.firebaseapp.com",
+    //   projectId: "YOUR_PROJECT",
+    //   storageBucket: "YOUR_PROJECT.appspot.com",
+    //   appId: "YOUR_APP_ID"
+    // };
+    // window.ENABLE_CLOUD_UPLOAD = true;
+    // Optional auth (require Firebase login before cloud upload)
+    // window.FIREBASE_AUTH_REQUIRED = true;
+    // window.FIREBASE_AUTH_EMAIL = "admin@example.com"; // jika ingin pakai email tetap
+
+    // ---------- IndexedDB helper ----------
+    const DB_NAME = 'mediaDB';
+    const DB_VERSION = 1;
+    const STORE = 'media';
+    function openDB(){
+      return new Promise((resolve, reject)=>{
+        const req = indexedDB.open(DB_NAME, DB_VERSION);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if(!db.objectStoreNames.contains(STORE)){
+            const store = db.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
+            store.createIndex('by_category', 'category', { unique: false });
+          }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+    async function dbAdd(record){
+      const db = await openDB();
+      return new Promise((resolve, reject)=>{
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.onerror = () => reject(tx.error);
+        const req = tx.objectStore(STORE).add(record);
+        req.onsuccess = () => resolve(req.result);
+      });
+    }
+    async function dbGet(id){
+      const db = await openDB();
+      return new Promise((resolve, reject)=>{
+        const tx = db.transaction(STORE, 'readonly');
+        const req = tx.objectStore(STORE).get(id);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+    async function dbUpdate(id, updates){
+      const db = await openDB();
+      return new Promise((resolve, reject)=>{
+        const tx = db.transaction(STORE, 'readwrite');
+        const store = tx.objectStore(STORE);
+        const getReq = store.get(id);
+        getReq.onsuccess = () => {
+          const rec = Object.assign({}, getReq.result, updates);
+          const putReq = store.put(rec);
+          putReq.onsuccess = () => resolve(rec);
+          putReq.onerror = () => reject(putReq.error);
+        };
+        getReq.onerror = () => reject(getReq.error);
+      });
+    }
+    async function dbGetByCategory(category){
+      const db = await openDB();
+      return new Promise((resolve, reject)=>{
+        const tx = db.transaction(STORE, 'readonly');
+        const idx = tx.objectStore(STORE).index('by_category');
+        const req = idx.getAll(IDBKeyRange.only(category));
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+      });
+    }
+    async function dbDelete(id){
+      const db = await openDB();
+      return new Promise((resolve, reject)=>{
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.objectStore(STORE).delete(id);
+      });
+    }
+    async function dbDeleteByCategory(category){
+      const db = await openDB();
+      return new Promise((resolve, reject)=>{
+        const tx = db.transaction(STORE, 'readwrite');
+        const store = tx.objectStore(STORE);
+        const idx = store.index('by_category');
+        const req = idx.openCursor(IDBKeyRange.only(category));
+        req.onsuccess = e => {
+          const cursor = e.target.result;
+          if(cursor){
+            cursor.delete();
+            cursor.continue();
+          }else{
+            resolve();
+          }
+        };
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    // Floating dots generator
+    (function spawnDots(){
+      // disabled for performance
+      return;
+    })();
+
+    // Login logic
+    (function(){
+      // prevent scrolling and hide main animations while login is open
+      document.body.classList.add('locked');
+      const mainFlow = document.querySelector('.main-flow');
+      const particles = document.getElementById('particles');
+      if(mainFlow) mainFlow.classList.add('hide');
+      if(particles) particles.classList.add('hide');
+
+      const form = document.getElementById('login-form');
+      const err = document.getElementById('login-error');
+      const gate = document.getElementById('gate');
+      const app = document.getElementById('app');
+      form.addEventListener('submit', function(e){
+        e.preventDefault();
+        const u = (document.getElementById('username').value || '').trim().toLowerCase();
+        const p = (document.getElementById('password').value || '').trim();
+        const localOk = (u === 'sdnkarangsegar03' && p === 'qwertyui123');
+        const needCloudAuth = !!(window.ENABLE_CLOUD_UPLOAD && window.FIREBASE_CONFIG && window.FIREBASE_AUTH_REQUIRED);
+        async function finish(){
+          gate.classList.add('hide');
+          app.removeAttribute('aria-hidden');
+          document.getElementById('password').value = '';
+          document.body.classList.remove('locked');
+          if(mainFlow) mainFlow.classList.remove('hide');
+          if(particles) particles.classList.remove('hide');
+          err.textContent = '';
+        }
+        if(!localOk){
+          err.textContent = 'Username atau password salah.';
+          return;
+        }
+        // Selalu buka website setelah verifikasi lokal
+        finish();
+        // Jika perlu autentikasi cloud, jalankan di background dan tidak menghalangi akses
+        if(needCloudAuth){
+          (async ()=>{
+            try{
+              if(typeof firebase === 'undefined' || !window.FIREBASE_CONFIG){
+                throw new Error('Firebase SDK/config missing');
+              }
+              if(!firebase.apps.length){ firebase.initializeApp(window.FIREBASE_CONFIG); }
+              const email = window.FIREBASE_AUTH_EMAIL || (u + '@example.com');
+              await firebase.auth().signInWithEmailAndPassword(email, p);
+              // success: keep cloud on
+            }catch(e){
+              console.warn('Firebase auth failed or not configured:', e);
+              window.ENABLE_CLOUD_UPLOAD = false;
+              setTimeout(()=>alert('Masuk berhasil. Sinkronisasi cloud dimatikan (Firebase belum siap).'), 50);
+            }
+          })();
+        }
+      });
+      // Performance toggle
+      const btn = document.getElementById('perf-toggle');
+      function applyPref(){
+        const off = localStorage.getItem('animOff') === '1';
+        document.body.classList.toggle('animation-off', off);
+        btn.textContent = off ? 'Nyalakan Animasi' : 'Matikan Animasi';
+      }
+      if(btn){
+        applyPref();
+        btn.addEventListener('click', ()=>{
+          const off = !(localStorage.getItem('animOff') === '1');
+          localStorage.setItem('animOff', off ? '1' : '0');
+          applyPref();
+        });
+      }
+    })();
+
+    // Upload handling: click + drag & drop + previews
+    (function(){
+      const drop = document.getElementById('dropzone');
+      const input = document.getElementById('file-input');
+      const choose = document.getElementById('choose-btn');
+      const categorySelect = document.getElementById('category-select');
+      const galleries = {
+        senam: document.querySelector('.gallery[data-gallery="senam"]'),
+        pramuka: document.querySelector('.gallery[data-gallery="pramuka"]'),
+        upacara: document.querySelector('.gallery[data-gallery="upacara"]'),
+        maulid: document.querySelector('.gallery[data-gallery="maulid"]'),
+        kelulusan: document.querySelector('.gallery[data-gallery="kelulusan"]'),
+        bersama: document.querySelector('.gallery[data-gallery="bersama"]'),
+      };
+      const MAX = 50 * 1024 * 1024; // 50MB per file
+      // expand/collapse categories
+      document.querySelectorAll('[data-toggle]').forEach(title=>{
+        title.addEventListener('click', ()=>{
+          const key = title.getAttribute('data-toggle');
+          const gal = galleries[key];
+          if(!gal) return;
+          gal.classList.toggle('hide');
+        });
+      });
+      // clear-all per category
+      document.querySelectorAll('[data-clear]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          const key = btn.getAttribute('data-clear');
+          if(!galleries[key]) return;
+          if(!confirm('Apakah Anda yakin ingin menghapus SEMUA file di kategori ini?\nPilih OK (Ya) untuk menghapus, Cancel (Tidak) untuk batal.')) return;
+          await dbDeleteByCategory(key);
+          galleries[key].innerHTML = '';
+        });
+      });
+      function renderItem(rec, gal){
+        const item = document.createElement('div');
+        item.className = 'item';
+        const ext = (rec.name.split('.').pop() || '').toUpperCase();
+        const sizeKB = Math.max(1, Math.round(rec.size / 1024));
+        const extEl = document.createElement('div');
+        extEl.className = 'ext';
+        extEl.textContent = ext || (rec.type.startsWith('video/') ? 'MP4' : 'JPG');
+        const name = document.createElement('div');
+        name.className = 'name';
+        name.textContent = rec.name;
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        meta.textContent = sizeKB + ' KB';
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+        // download
+        const dl = document.createElement('a');
+        dl.className = 'btn btn-download';
+        dl.textContent = 'Download';
+        let revokeNeeded = false;
+        let url;
+        if(rec.url){
+          url = rec.url;
+        }else if(rec.blob){
+          url = URL.createObjectURL(rec.blob);
+          revokeNeeded = true;
+        }else{
+          url = '#';
+        }
+        dl.href = url;
+        dl.download = rec.name || 'download';
+        // delete
+        const del = document.createElement('button');
+        del.className = 'remove';
+        del.type = 'button';
+        del.setAttribute('aria-label', 'Hapus');
+        del.textContent = 'Hapus';
+        del.addEventListener('click', async () => {
+          await dbDelete(rec.id);
+          if(revokeNeeded){ URL.revokeObjectURL(url); }
+          item.remove();
+        });
+        actions.appendChild(dl);
+        actions.appendChild(del);
+        item.appendChild(extEl);
+        item.appendChild(name);
+        item.appendChild(meta);
+        item.appendChild(actions);
+        gal.prepend(item);
+      }
+      // restore saved items per category on load
+      (async function restore(){
+        for(const key of Object.keys(galleries)){
+          const list = await dbGetByCategory(key);
+          const gal = galleries[key];
+          list.forEach(rec => renderItem(rec, gal));
+        }
+      })();
+
+      choose.addEventListener('click', () => input.click());
+      drop.addEventListener('click', (e) => {
+        if(e.target === drop || e.target.closest('.inner')) input.click();
+      });
+      input.addEventListener('change', () => handleFiles(input.files));
+
+      ['dragenter','dragover'].forEach(ev=>{
+        drop.addEventListener(ev, e => {
+          e.preventDefault(); e.stopPropagation();
+          drop.classList.add('dragover');
+        });
+      });
+      ['dragleave','drop'].forEach(ev=>{
+        drop.addEventListener(ev, e => {
+          e.preventDefault(); e.stopPropagation();
+          drop.classList.remove('dragover');
+        });
+      });
+      drop.addEventListener('drop', e => {
+        if(e.dataTransfer && e.dataTransfer.files){
+          handleFiles(e.dataTransfer.files);
+        }
+      });
+
+      function handleFiles(fileList){
+        const cat = categorySelect.value;
+        if(!cat || !galleries[cat]){
+          alert('Silakan pilih kategori terlebih dahulu.');
+          return;
+        }
+        const gal = galleries[cat];
+        const files = Array.from(fileList || []);
+        files.forEach(file=>{
+          if(!(file.type.startsWith('image/') || file.type.startsWith('video/'))) return;
+          if(file.size > MAX){
+            alert('Ukuran file melebihi 50MB: ' + file.name);
+            return;
+          }
+          // save to IndexedDB as blob
+          const record = { category: cat, name: file.name, size: file.size, type: file.type, blob: file };
+          dbAdd(record).then(async (id)=>{
+            const rec = await dbGet(id);
+            if(rec){ renderItem(rec, gal); }
+            // optional cloud upload
+            if(window.ENABLE_CLOUD_UPLOAD && window.FIREBASE_CONFIG){
+              const path = cat + '/' + Date.now() + '-' + file.name;
+              try{
+                const url = await uploadToCloud(file, path);
+                if(url){ await dbUpdate(id, { url }); }
+              }catch(e){
+                console.warn('Cloud upload failed:', e);
+              }
+            }
+          }).catch(()=>{});
+        });
+        // reset input for same file selection again
+        input.value = '';
+      }
+    })();
+
+    // ---------- Optional Cloud Storage Integration (Firebase) ----------
+    // Jika ingin menyimpan bersama di cloud:
+    // 1) Buat project Firebase → aktifkan Storage
+    // 2) Tambahkan konfigurasi di bawah ini (ganti null menjadi object config)
+    //    window.FIREBASE_CONFIG = { apiKey: '...', authDomain: '...', projectId: '...', storageBucket: '...', appId: '...' };
+    // 3) Tambahkan <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-app-compat.js"></script>
+    //    <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-storage-compat.js"></script> sebelum script ini.
+    // 4) Lalu panggil fungsi uploadToCloud(file, path) setelah local save jika ingin sinkron ke cloud.
+    // Catatan: butuh aturan security Storage yang sesuai.
+    function uploadToCloud(file, path){
+      if(!window.FIREBASE_CONFIG || !window.firebase){ return Promise.resolve(null); }
+      try{
+        if(!firebase.apps.length){ firebase.initializeApp(window.FIREBASE_CONFIG); }
+        const storage = firebase.storage();
+        const ref = storage.ref().child(path);
+        return ref.put(file).then(()=> ref.getDownloadURL());
+      }catch(e){
+        return Promise.reject(e);
+      }
+    }
+  </script>
+</body>
+</html>
+
+
